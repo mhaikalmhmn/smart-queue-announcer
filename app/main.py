@@ -40,6 +40,7 @@ PIPER_MODEL = Path(
 )
 
 BELL_FILE = BASE_DIR / "sounds" / "bell.wav"
+VOICE_CACHE_DIR = BASE_DIR / "voice_cache"
 
 CHARACTER_DELAY = 0.30
 BELL_DELAY = 0.50
@@ -1016,38 +1017,26 @@ class SmartQueueAnnouncer(QMainWindow):
         include_bell=True
     ):
 
-        if not PIPER_PYTHON.exists():
-
+        if not VOICE_CACHE_DIR.exists():
             raise FileNotFoundError(
-                f"Piper Python not found:\n"
-                f"{PIPER_PYTHON}"
-            )
-
-        if not PIPER_MODEL.exists():
-
-            raise FileNotFoundError(
-                f"Lessac model not found:\n"
-                f"{PIPER_MODEL}"
+                f"Voice cache folder not found:\\n"
+                f"{VOICE_CACHE_DIR}"
             )
 
         if include_bell and not BELL_FILE.exists():
-
             raise FileNotFoundError(
-                f"Bell sound not found:\n"
+                f"Bell sound not found:\\n"
                 f"{BELL_FILE}"
             )
 
         parts = []
 
         if include_bell:
-
             bell = AudioSegment.from_wav(
                 BELL_FILE
             )
 
-            parts.append(
-                bell
-            )
+            parts.append(bell)
 
             parts.append(
                 AudioSegment.silent(
@@ -1057,86 +1046,65 @@ class SmartQueueAnnouncer(QMainWindow):
                 )
             )
 
-        with tempfile.TemporaryDirectory() as temp:
+        for index, character in enumerate(queue.upper()):
 
-            temp = Path(temp)
+            character_file = (
+                VOICE_CACHE_DIR /
+                f"{character}.wav"
+            )
 
-            for index, character in enumerate(
-                queue.upper()
-            ):
-
-                pronunciation = PRONUNCIATION.get(
-                    character,
-                    character
+            if not character_file.exists():
+                raise FileNotFoundError(
+                    f"Voice cache file not found:\\n"
+                    f"{character_file}"
                 )
 
-                character_file = (
-                    temp /
-                    f"character_{index}.wav"
-                )
+            character_audio = AudioSegment.from_wav(
+                character_file
+            )
 
-                self.generate_speech(
-                    pronunciation,
-                    character_file
-                )
+            parts.append(character_audio)
 
-                character_audio = (
-                    AudioSegment.from_wav(
-                        character_file
-                    )
-                )
-
+            if index < len(queue) - 1:
                 parts.append(
-                    character_audio
-                )
-
-                if index < len(queue) - 1:
-
-                    parts.append(
-                        AudioSegment.silent(
-                            duration=int(
-                                CHARACTER_DELAY * 1000
-                            )
+                    AudioSegment.silent(
+                        duration=int(
+                            CHARACTER_DELAY * 1000
                         )
                     )
+                )
 
-            # Pause before final phrase
-            parts.append(
-                AudioSegment.silent(
-                    duration=int(
-                        PHRASE_DELAY * 1000
-                    )
+        phrase_file = (
+            VOICE_CACHE_DIR /
+            "final_phrase.wav"
+        )
+
+        if not phrase_file.exists():
+            raise FileNotFoundError(
+                f"Final phrase cache file not found:\\n"
+                f"{phrase_file}"
+            )
+
+        parts.append(
+            AudioSegment.silent(
+                duration=int(
+                    PHRASE_DELAY * 1000
                 )
             )
+        )
 
-            phrase_file = (
-                temp /
-                "final_phrase.wav"
-            )
-
-            self.generate_speech(
-                FINAL_PHRASE,
+        parts.append(
+            AudioSegment.from_wav(
                 phrase_file
             )
-
-            phrase_audio = (
-                AudioSegment.from_wav(
-                    phrase_file
-                )
-            )
-
-            parts.append(
-                phrase_audio
-            )
+        )
 
         if not parts:
-
             return
 
         announcement = parts[0]
 
         for part in parts[1:]:
-
             announcement += part
 
         announcement.export(
