@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from datetime import datetime, date
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QFrame,
 )
 
 
@@ -26,14 +27,16 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.current_queue = ""
         self.last_called_queue = ""
-        self.history = []
 
-        self.normal_size = (500, 700)
-        self.compact_size = (450, 620)
+        # Today's history only
+        self.history = []
+        self.history_date = date.today()
 
         self.setWindowTitle("Smart Queue Announcer")
-        self.setMinimumSize(430, 600)
-        self.resize(*self.normal_size)
+
+        # Fixed compact touchscreen-friendly size
+        self.setMinimumSize(500, 700)
+        self.resize(500, 700)
 
         self.build_interface()
 
@@ -170,8 +173,6 @@ class SmartQueueAnnouncer(QMainWindow):
             button = QPushButton(key)
 
             button.setObjectName("key_button")
-
-            # Large touch target
             button.setMinimumHeight(42)
 
             button.clicked.connect(
@@ -188,7 +189,7 @@ class SmartQueueAnnouncer(QMainWindow):
         layout.addLayout(keypad)
 
         # =====================================================
-        # CALL BUTTON
+        # CALL QUEUE
         # =====================================================
 
         call_button = QPushButton(
@@ -199,7 +200,6 @@ class SmartQueueAnnouncer(QMainWindow):
             "call_button"
         )
 
-        # Same height as secondary buttons
         call_button.setMinimumHeight(52)
 
         call_button.clicked.connect(
@@ -209,7 +209,7 @@ class SmartQueueAnnouncer(QMainWindow):
         layout.addWidget(call_button)
 
         # =====================================================
-        # SECONDARY BUTTONS
+        # CALL AGAIN + CLEAR
         # =====================================================
 
         actions = QHBoxLayout()
@@ -223,7 +223,6 @@ class SmartQueueAnnouncer(QMainWindow):
             "recall_button"
         )
 
-        # Same height as CALL
         recall_button.setMinimumHeight(52)
 
         recall_button.clicked.connect(
@@ -238,7 +237,6 @@ class SmartQueueAnnouncer(QMainWindow):
             "clear_button"
         )
 
-        # Same height as CALL
         clear_button.setMinimumHeight(52)
 
         clear_button.clicked.connect(
@@ -274,32 +272,34 @@ class SmartQueueAnnouncer(QMainWindow):
             8
         )
 
-        # Header
+        # History heading
         header = QHBoxLayout()
 
-        title = QLabel(
-            "LATEST 10 CALLS"
-        )
-
-        title.setObjectName(
+        self.history_title = QLabel()
+        self.history_title.setObjectName(
             "section_title"
         )
 
-        header.addWidget(title)
+        header.addWidget(
+            self.history_title
+        )
+
         header.addStretch()
 
-        clear_history = QPushButton(
+        clear_history_button = QPushButton(
             "Clear History"
         )
 
-        clear_history.setMinimumHeight(44)
+        clear_history_button.setMinimumHeight(
+            44
+        )
 
-        clear_history.clicked.connect(
+        clear_history_button.clicked.connect(
             self.clear_history
         )
 
         header.addWidget(
-            clear_history
+            clear_history_button
         )
 
         main_layout.addLayout(
@@ -334,8 +334,6 @@ class SmartQueueAnnouncer(QMainWindow):
             6
         )
 
-        self.history_layout.addStretch()
-
         scroll.setWidget(
             container
         )
@@ -345,6 +343,10 @@ class SmartQueueAnnouncer(QMainWindow):
         )
 
         self.history_scroll = scroll
+
+        # IMPORTANT:
+        # Build the initial empty history immediately.
+        self.update_history_display()
 
         return page
 
@@ -367,10 +369,7 @@ class SmartQueueAnnouncer(QMainWindow):
 
         layout.setSpacing(13)
 
-        # =====================================================
-        # VOICE
-        # =====================================================
-
+        # Voice
         voice_title = QLabel(
             "VOICE SETTINGS"
         )
@@ -401,16 +400,11 @@ class SmartQueueAnnouncer(QMainWindow):
             voice
         )
 
-        # =====================================================
-        # SPEED
-        # =====================================================
+        # Voice speed
+        speed_row = QHBoxLayout()
 
         speed_label = QLabel(
             "Voice Speed"
-        )
-
-        layout.addWidget(
-            speed_label
         )
 
         speed_value = QLabel(
@@ -420,8 +414,6 @@ class SmartQueueAnnouncer(QMainWindow):
         speed_value.setObjectName(
             "slider_value"
         )
-
-        speed_row = QHBoxLayout()
 
         speed_row.addWidget(
             speed_label
@@ -433,11 +425,6 @@ class SmartQueueAnnouncer(QMainWindow):
             speed_value
         )
 
-        # Replace the previous label position
-        layout.takeAt(
-            layout.count() - 1
-        )
-
         layout.addLayout(
             speed_row
         )
@@ -446,22 +433,11 @@ class SmartQueueAnnouncer(QMainWindow):
             Qt.Horizontal
         )
 
-        speed.setMinimum(
-            -50
-        )
+        speed.setMinimum(-50)
+        speed.setMaximum(50)
+        speed.setValue(0)
 
-        speed.setMaximum(
-            50
-        )
-
-        speed.setValue(
-            0
-        )
-
-        # Large touch area
-        speed.setMinimumHeight(
-            42
-        )
+        speed.setMinimumHeight(42)
 
         speed.valueChanged.connect(
             lambda value:
@@ -474,10 +450,7 @@ class SmartQueueAnnouncer(QMainWindow):
             speed
         )
 
-        # =====================================================
-        # VOLUME
-        # =====================================================
-
+        # Volume
         volume_row = QHBoxLayout()
 
         volume_label = QLabel(
@@ -510,22 +483,11 @@ class SmartQueueAnnouncer(QMainWindow):
             Qt.Horizontal
         )
 
-        volume.setMinimum(
-            0
-        )
+        volume.setMinimum(0)
+        volume.setMaximum(100)
+        volume.setValue(80)
 
-        volume.setMaximum(
-            100
-        )
-
-        volume.setValue(
-            80
-        )
-
-        # Large touch area
-        volume.setMinimumHeight(
-            42
-        )
+        volume.setMinimumHeight(42)
 
         volume.valueChanged.connect(
             lambda value:
@@ -551,15 +513,11 @@ class SmartQueueAnnouncer(QMainWindow):
             48
         )
 
-        # Voice will be connected later
         layout.addWidget(
             test_voice
         )
 
-        # =====================================================
-        # ANNOUNCEMENT
-        # =====================================================
-
+        # Announcement
         announcement_title = QLabel(
             "ANNOUNCEMENT"
         )
@@ -588,10 +546,7 @@ class SmartQueueAnnouncer(QMainWindow):
             announcement
         )
 
-        # =====================================================
-        # DISPLAY
-        # =====================================================
-
+        # Display
         display_title = QLabel(
             "DISPLAY"
         )
@@ -608,13 +563,8 @@ class SmartQueueAnnouncer(QMainWindow):
             "Always keep window on top"
         )
 
-        always_top.setChecked(
-            True
-        )
-
-        always_top.setMinimumHeight(
-            44
-        )
+        always_top.setChecked(True)
+        always_top.setMinimumHeight(44)
 
         always_top.stateChanged.connect(
             self.toggle_always_on_top
@@ -622,26 +572,6 @@ class SmartQueueAnnouncer(QMainWindow):
 
         layout.addWidget(
             always_top
-        )
-
-        compact = QCheckBox(
-            "Compact Mode"
-        )
-
-        compact.setChecked(
-            False
-        )
-
-        compact.setMinimumHeight(
-            44
-        )
-
-        compact.stateChanged.connect(
-            self.toggle_compact_mode
-        )
-
-        layout.addWidget(
-            compact
         )
 
         layout.addStretch()
@@ -662,9 +592,7 @@ class SmartQueueAnnouncer(QMainWindow):
             Qt.AlignCenter
         )
 
-        icon = QLabel(
-            "🔊"
-        )
+        icon = QLabel("🔊")
 
         icon.setObjectName(
             "about_icon"
@@ -707,21 +635,11 @@ class SmartQueueAnnouncer(QMainWindow):
             True
         )
 
-        layout.addWidget(
-            icon
-        )
+        layout.addWidget(icon)
+        layout.addWidget(title)
+        layout.addWidget(version)
 
-        layout.addWidget(
-            title
-        )
-
-        layout.addWidget(
-            version
-        )
-
-        layout.addSpacing(
-            20
-        )
+        layout.addSpacing(20)
 
         layout.addWidget(
             description
@@ -774,10 +692,12 @@ class SmartQueueAnnouncer(QMainWindow):
             )
 
     # =========================================================
-    # CALL
+    # CALL QUEUE
     # =========================================================
 
     def call_queue(self):
+
+        self.check_new_day()
 
         if not self.current_queue:
             return
@@ -799,6 +719,8 @@ class SmartQueueAnnouncer(QMainWindow):
 
     def recall_queue(self):
 
+        self.check_new_day()
+
         if not self.last_called_queue:
             return
 
@@ -810,14 +732,28 @@ class SmartQueueAnnouncer(QMainWindow):
         # Piper voice will be connected later.
 
     # =========================================================
-    # HISTORY
+    # DAILY HISTORY
     # =========================================================
+
+    def check_new_day(self):
+
+        today = date.today()
+
+        if today != self.history_date:
+
+            self.history.clear()
+
+            self.history_date = today
+
+            self.update_history_display()
 
     def add_history(
         self,
         queue,
         call_type
     ):
+
+        self.check_new_day()
 
         timestamp = datetime.now().strftime(
             "%I:%M:%S %p"
@@ -841,7 +777,15 @@ class SmartQueueAnnouncer(QMainWindow):
         self
     ):
 
-        # Remove existing widgets
+        today_text = date.today().strftime(
+            "%d %b %Y"
+        )
+
+        self.history_title.setText(
+            f"TODAY'S CALLS — {today_text}"
+        )
+
+        # Remove previous history widgets
         while self.history_layout.count():
 
             item = self.history_layout.takeAt(0)
@@ -851,10 +795,11 @@ class SmartQueueAnnouncer(QMainWindow):
             if widget:
                 widget.deleteLater()
 
+        # No calls
         if not self.history:
 
             empty = QLabel(
-                "No calls yet."
+                "No calls yet today."
             )
 
             empty.setObjectName(
@@ -873,6 +818,7 @@ class SmartQueueAnnouncer(QMainWindow):
 
             return
 
+        # Display latest 10
         for queue, time, call_type in self.history:
 
             card = QFrame()
@@ -892,7 +838,7 @@ class SmartQueueAnnouncer(QMainWindow):
                 8
             )
 
-            # Queue
+            # Queue number
             queue_label = QLabel(
                 queue
             )
@@ -901,17 +847,13 @@ class SmartQueueAnnouncer(QMainWindow):
                 "history_queue"
             )
 
-            # Details
+            # Time + call type
             details = QLabel(
                 f"{time}\n{call_type}"
             )
 
             details.setObjectName(
                 "history_details"
-            )
-
-            details.setWordWrap(
-                True
             )
 
             # Recall
@@ -953,15 +895,19 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.history_layout.addStretch()
 
+    # =========================================================
+    # HISTORY RECALL
+    # =========================================================
+
     def recall_history(
         self,
         queue
     ):
 
-        # Set as last called
+        self.check_new_day()
+
         self.last_called_queue = queue
 
-        # Immediately record the recall
         self.add_history(
             queue,
             "Call Again"
@@ -969,9 +915,15 @@ class SmartQueueAnnouncer(QMainWindow):
 
         # Piper voice will be connected later.
 
+    # =========================================================
+    # CLEAR HISTORY
+    # =========================================================
+
     def clear_history(self):
 
         self.history.clear()
+
+        self.history_date = date.today()
 
         self.update_history_display()
 
@@ -992,10 +944,6 @@ class SmartQueueAnnouncer(QMainWindow):
 
         return "Normal"
 
-    # =========================================================
-    # ALWAYS ON TOP
-    # =========================================================
-
     def toggle_always_on_top(
         self,
         state
@@ -1012,39 +960,10 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.show()
 
-    # =========================================================
-    # COMPACT MODE
-    # =========================================================
 
-    def toggle_compact_mode(
-        self,
-        state
-    ):
-
-        enabled = (
-            state == Qt.Checked
-        )
-
-        if enabled:
-
-            self.resize(
-                self.compact_size[0],
-                self.compact_size[1]
-            )
-
-        else:
-
-            self.resize(
-                self.normal_size[0],
-                self.normal_size[1]
-            )
-
-        self.updateGeometry()
-
-    # =========================================================
-    # APPLICATION
-    # =========================================================
-
+# =============================================================
+# APPLICATION
+# =============================================================
 
 app = QApplication(
     sys.argv
@@ -1125,7 +1044,7 @@ QTabBar::tab:selected {
 }
 
 /* =========================================================
-   ANNOUNCEMENT PREVIEW
+   PREVIEW
    ========================================================= */
 
 #preview {
@@ -1161,7 +1080,7 @@ QTabBar::tab:selected {
 }
 
 /* =========================================================
-   MAIN CALL
+   CALL
    ========================================================= */
 
 #call_button {
@@ -1183,7 +1102,7 @@ QTabBar::tab:selected {
 }
 
 /* =========================================================
-   SECONDARY BUTTONS
+   CALL AGAIN
    ========================================================= */
 
 #recall_button {
@@ -1203,6 +1122,10 @@ QTabBar::tab:selected {
 #recall_button:pressed {
     background-color: #0c5c2f;
 }
+
+/* =========================================================
+   CLEAR QUEUE
+   ========================================================= */
 
 #clear_button {
     background-color: #a92323;
@@ -1255,6 +1178,10 @@ QTabBar::tab:selected {
 
 #history_recall:hover {
     background-color: #168b48;
+}
+
+#history_recall:pressed {
+    background-color: #0c5c2f;
 }
 
 #history_empty {
@@ -1327,7 +1254,7 @@ QSlider::handle:horizontal {
 }
 
 /* =========================================================
-   TOUCH CHECKBOXES
+   TOUCH CHECKBOX
    ========================================================= */
 
 QCheckBox {
