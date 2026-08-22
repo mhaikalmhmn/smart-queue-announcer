@@ -1,5 +1,10 @@
 import sys
+import subprocess
+import tempfile
+from pathlib import Path
 from datetime import datetime, date
+
+from pydub import AudioSegment
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -20,9 +25,82 @@ from PySide6.QtWidgets import (
 )
 
 
+# =============================================================
+# VOICE SETTINGS
+# =============================================================
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+PIPER_PYTHON = Path(
+    r"C:\Users\User\piper-test\Scripts\python.exe"
+)
+
+PIPER_MODEL = Path(
+    r"C:\Users\User\OneDrive - Foodle Sdn Bhd\Backup\piper-voice\en_US-lessac-high.onnx"
+)
+
+BELL_FILE = BASE_DIR / "sounds" / "bell.wav"
+
+CHARACTER_DELAY = 0.30
+BELL_DELAY = 0.50
+PHRASE_DELAY = 0.80
+
+FINAL_PHRASE = "Please pick up your order."
+
+
+# =============================================================
+# FINAL PRONUNCIATION MAP
+# =============================================================
+
+PRONUNCIATION = {
+    "A": "a",
+    "B": "bee",
+    "C": "sea",
+    "D": "dee",
+    "E": "ee",
+    "F": "F",
+    "G": "gee",
+    "H": "aitch",
+    "I": "eye",
+    "J": "jay",
+    "K": "kay",
+    "L": "el",
+    "M": "em",
+    "N": "en",
+    "O": "oh",
+    "P": "pee",
+    "Q": "cue",
+    "R": "ar",
+    "S": "ess",
+    "T": "tee",
+    "U": "you",
+    "V": "vee",
+    "W": "double you",
+    "X": "ex",
+    "Y": "why",
+    "Z": "zed",
+
+    "0": "zero",
+    "1": "one",
+    "2": "two",
+    "3": "three",
+    "4": "four",
+    "5": "five",
+    "6": "six",
+    "7": "seven",
+    "8": "eight",
+    "9": "nine",
+}
+
+
+# =============================================================
+# MAIN WINDOW
+# =============================================================
+
 class SmartQueueAnnouncer(QMainWindow):
 
     def __init__(self):
+
         super().__init__()
 
         self.current_queue = ""
@@ -32,13 +110,22 @@ class SmartQueueAnnouncer(QMainWindow):
         self.history = []
         self.history_date = date.today()
 
-        self.setWindowTitle("Smart Queue Announcer")
+        self.setWindowTitle(
+            "Smart Queue Announcer"
+        )
 
-        # Fixed compact touchscreen-friendly size
-        self.setMinimumSize(500, 700)
-        self.resize(500, 700)
+        self.setMinimumSize(
+            500,
+            700
+        )
+
+        self.resize(
+            500,
+            700
+        )
 
         self.build_interface()
+
 
     # =========================================================
     # MAIN INTERFACE
@@ -47,26 +134,56 @@ class SmartQueueAnnouncer(QMainWindow):
     def build_interface(self):
 
         central = QWidget()
-        self.setCentralWidget(central)
 
-        main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        self.setCentralWidget(
+            central
+        )
+
+        main_layout = QVBoxLayout(
+            central
+        )
+
+        main_layout.setContentsMargins(
+            12,
+            12,
+            12,
+            12
+        )
+
         main_layout.setSpacing(8)
 
         # Header
         header = QHBoxLayout()
 
-        title = QLabel("🔊  Smart Queue Announcer")
-        title.setObjectName("app_title")
+        title = QLabel(
+            "🔊  Smart Queue Announcer"
+        )
 
-        status = QLabel("● READY")
-        status.setObjectName("status")
+        title.setObjectName(
+            "app_title"
+        )
 
-        header.addWidget(title)
+        status = QLabel(
+            "● READY"
+        )
+
+        status.setObjectName(
+            "status"
+        )
+
+        header.addWidget(
+            title
+        )
+
         header.addStretch()
-        header.addWidget(status)
 
-        main_layout.addLayout(header)
+        header.addWidget(
+            status
+        )
+
+        main_layout.addLayout(
+            header
+        )
 
         # Tabs
         self.tabs = QTabWidget()
@@ -91,7 +208,9 @@ class SmartQueueAnnouncer(QMainWindow):
             "ⓘ About"
         )
 
-        main_layout.addWidget(self.tabs)
+        main_layout.addWidget(
+            self.tabs
+        )
 
         # Footer
         footer = QHBoxLayout()
@@ -99,18 +218,33 @@ class SmartQueueAnnouncer(QMainWindow):
         voice_status = QLabel(
             "● Voice: Lessac High"
         )
-        voice_status.setObjectName("footer")
+
+        voice_status.setObjectName(
+            "footer"
+        )
 
         offline_status = QLabel(
             "Offline"
         )
-        offline_status.setObjectName("offline")
 
-        footer.addWidget(voice_status)
+        offline_status.setObjectName(
+            "offline"
+        )
+
+        footer.addWidget(
+            voice_status
+        )
+
         footer.addStretch()
-        footer.addWidget(offline_status)
 
-        main_layout.addLayout(footer)
+        footer.addWidget(
+            offline_status
+        )
+
+        main_layout.addLayout(
+            footer
+        )
+
 
     # =========================================================
     # ANNOUNCER TAB
@@ -120,41 +254,86 @@ class SmartQueueAnnouncer(QMainWindow):
 
         page = QWidget()
 
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(8, 10, 8, 8)
+        layout = QVBoxLayout(
+            page
+        )
+
+        layout.setContentsMargins(
+            8,
+            10,
+            8,
+            8
+        )
+
         layout.setSpacing(8)
 
         # Current queue
-        current_title = QLabel("CURRENT QUEUE")
-        current_title.setObjectName("section_title")
+        current_title = QLabel(
+            "CURRENT QUEUE"
+        )
 
-        layout.addWidget(current_title)
+        current_title.setObjectName(
+            "section_title"
+        )
 
-        self.queue_display = QLabel("—")
-        self.queue_display.setObjectName("queue_display")
-        self.queue_display.setAlignment(Qt.AlignCenter)
-        self.queue_display.setMinimumHeight(72)
+        layout.addWidget(
+            current_title
+        )
 
-        layout.addWidget(self.queue_display)
+        self.queue_display = QLabel(
+            "—"
+        )
+
+        self.queue_display.setObjectName(
+            "queue_display"
+        )
+
+        self.queue_display.setAlignment(
+            Qt.AlignCenter
+        )
+
+        self.queue_display.setMinimumHeight(
+            72
+        )
+
+        layout.addWidget(
+            self.queue_display
+        )
 
         # Announcement preview
         self.preview = QLabel(
             "Please enter a queue number."
         )
 
-        self.preview.setObjectName("preview")
-        self.preview.setWordWrap(True)
-        self.preview.setAlignment(Qt.AlignCenter)
-        self.preview.setMinimumHeight(42)
+        self.preview.setObjectName(
+            "preview"
+        )
 
-        layout.addWidget(self.preview)
+        self.preview.setWordWrap(
+            True
+        )
+
+        self.preview.setAlignment(
+            Qt.AlignCenter
+        )
+
+        self.preview.setMinimumHeight(
+            42
+        )
+
+        layout.addWidget(
+            self.preview
+        )
 
         # =====================================================
         # KEYPAD
         # =====================================================
 
         keypad = QGridLayout()
-        keypad.setSpacing(5)
+
+        keypad.setSpacing(
+            5
+        )
 
         keys = [
             "A", "B", "C", "D", "E", "F",
@@ -170,14 +349,24 @@ class SmartQueueAnnouncer(QMainWindow):
             row = index // 6
             column = index % 6
 
-            button = QPushButton(key)
+            button = QPushButton(
+                key
+            )
 
-            button.setObjectName("key_button")
-            button.setMinimumHeight(42)
+            button.setObjectName(
+                "key_button"
+            )
+
+            button.setMinimumHeight(
+                42
+            )
 
             button.clicked.connect(
-                lambda checked=False, value=key:
-                self.add_character(value)
+                lambda checked=False,
+                value=key:
+                self.add_character(
+                    value
+                )
             )
 
             keypad.addWidget(
@@ -186,7 +375,9 @@ class SmartQueueAnnouncer(QMainWindow):
                 column
             )
 
-        layout.addLayout(keypad)
+        layout.addLayout(
+            keypad
+        )
 
         # =====================================================
         # CALL QUEUE
@@ -200,20 +391,27 @@ class SmartQueueAnnouncer(QMainWindow):
             "call_button"
         )
 
-        call_button.setMinimumHeight(52)
+        call_button.setMinimumHeight(
+            52
+        )
 
         call_button.clicked.connect(
             self.call_queue
         )
 
-        layout.addWidget(call_button)
+        layout.addWidget(
+            call_button
+        )
 
         # =====================================================
         # CALL AGAIN + CLEAR
         # =====================================================
 
         actions = QHBoxLayout()
-        actions.setSpacing(6)
+
+        actions.setSpacing(
+            6
+        )
 
         recall_button = QPushButton(
             "↻  CALL AGAIN"
@@ -223,7 +421,9 @@ class SmartQueueAnnouncer(QMainWindow):
             "recall_button"
         )
 
-        recall_button.setMinimumHeight(52)
+        recall_button.setMinimumHeight(
+            52
+        )
 
         recall_button.clicked.connect(
             self.recall_queue
@@ -237,7 +437,9 @@ class SmartQueueAnnouncer(QMainWindow):
             "clear_button"
         )
 
-        clear_button.setMinimumHeight(52)
+        clear_button.setMinimumHeight(
+            52
+        )
 
         clear_button.clicked.connect(
             self.clear_queue
@@ -251,9 +453,12 @@ class SmartQueueAnnouncer(QMainWindow):
             clear_button
         )
 
-        layout.addLayout(actions)
+        layout.addLayout(
+            actions
+        )
 
         return page
+
 
     # =========================================================
     # HISTORY TAB
@@ -263,7 +468,9 @@ class SmartQueueAnnouncer(QMainWindow):
 
         page = QWidget()
 
-        main_layout = QVBoxLayout(page)
+        main_layout = QVBoxLayout(
+            page
+        )
 
         main_layout.setContentsMargins(
             8,
@@ -276,6 +483,7 @@ class SmartQueueAnnouncer(QMainWindow):
         header = QHBoxLayout()
 
         self.history_title = QLabel()
+
         self.history_title.setObjectName(
             "section_title"
         )
@@ -344,11 +552,10 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.history_scroll = scroll
 
-        # IMPORTANT:
-        # Build the initial empty history immediately.
         self.update_history_display()
 
         return page
+
 
     # =========================================================
     # SETTINGS TAB
@@ -358,7 +565,9 @@ class SmartQueueAnnouncer(QMainWindow):
 
         page = QWidget()
 
-        layout = QVBoxLayout(page)
+        layout = QVBoxLayout(
+            page
+        )
 
         layout.setContentsMargins(
             8,
@@ -367,7 +576,9 @@ class SmartQueueAnnouncer(QMainWindow):
             8
         )
 
-        layout.setSpacing(13)
+        layout.setSpacing(
+            13
+        )
 
         # Voice
         voice_title = QLabel(
@@ -433,11 +644,21 @@ class SmartQueueAnnouncer(QMainWindow):
             Qt.Horizontal
         )
 
-        speed.setMinimum(-50)
-        speed.setMaximum(50)
-        speed.setValue(0)
+        speed.setMinimum(
+            -50
+        )
 
-        speed.setMinimumHeight(42)
+        speed.setMaximum(
+            50
+        )
+
+        speed.setValue(
+            0
+        )
+
+        speed.setMinimumHeight(
+            42
+        )
 
         speed.valueChanged.connect(
             lambda value:
@@ -483,11 +704,21 @@ class SmartQueueAnnouncer(QMainWindow):
             Qt.Horizontal
         )
 
-        volume.setMinimum(0)
-        volume.setMaximum(100)
-        volume.setValue(80)
+        volume.setMinimum(
+            0
+        )
 
-        volume.setMinimumHeight(42)
+        volume.setMaximum(
+            100
+        )
+
+        volume.setValue(
+            80
+        )
+
+        volume.setMinimumHeight(
+            42
+        )
 
         volume.valueChanged.connect(
             lambda value:
@@ -511,6 +742,10 @@ class SmartQueueAnnouncer(QMainWindow):
 
         test_voice.setMinimumHeight(
             48
+        )
+
+        test_voice.clicked.connect(
+            self.test_voice
         )
 
         layout.addWidget(
@@ -563,8 +798,13 @@ class SmartQueueAnnouncer(QMainWindow):
             "Always keep window on top"
         )
 
-        always_top.setChecked(True)
-        always_top.setMinimumHeight(44)
+        always_top.setChecked(
+            True
+        )
+
+        always_top.setMinimumHeight(
+            44
+        )
 
         always_top.stateChanged.connect(
             self.toggle_always_on_top
@@ -578,6 +818,7 @@ class SmartQueueAnnouncer(QMainWindow):
 
         return page
 
+
     # =========================================================
     # ABOUT TAB
     # =========================================================
@@ -586,13 +827,17 @@ class SmartQueueAnnouncer(QMainWindow):
 
         page = QWidget()
 
-        layout = QVBoxLayout(page)
+        layout = QVBoxLayout(
+            page
+        )
 
         layout.setAlignment(
             Qt.AlignCenter
         )
 
-        icon = QLabel("🔊")
+        icon = QLabel(
+            "🔊"
+        )
 
         icon.setObjectName(
             "about_icon"
@@ -635,17 +880,28 @@ class SmartQueueAnnouncer(QMainWindow):
             True
         )
 
-        layout.addWidget(icon)
-        layout.addWidget(title)
-        layout.addWidget(version)
+        layout.addWidget(
+            icon
+        )
 
-        layout.addSpacing(20)
+        layout.addWidget(
+            title
+        )
+
+        layout.addWidget(
+            version
+        )
+
+        layout.addSpacing(
+            20
+        )
 
         layout.addWidget(
             description
         )
 
         return page
+
 
     # =========================================================
     # QUEUE INPUT
@@ -664,6 +920,7 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.update_preview()
 
+
     def clear_queue(self):
 
         self.current_queue = ""
@@ -675,6 +932,7 @@ class SmartQueueAnnouncer(QMainWindow):
         self.preview.setText(
             "Please enter a queue number."
         )
+
 
     def update_preview(self):
 
@@ -691,6 +949,247 @@ class SmartQueueAnnouncer(QMainWindow):
                 "Please enter a queue number."
             )
 
+
+    # =========================================================
+    # VOICE ENGINE
+    # =========================================================
+
+    def generate_speech(
+        self,
+        text,
+        output_file
+    ):
+
+        command = [
+            str(PIPER_PYTHON),
+            "-m",
+            "piper",
+            "--model",
+            str(PIPER_MODEL),
+            "--output_file",
+            str(output_file),
+        ]
+
+        subprocess.run(
+            command,
+            input=text,
+            text=True,
+            check=True,
+            creationflags=subprocess.CREATE_NO_WINDOW
+            if sys.platform == "win32"
+            else 0
+        )
+
+
+    def build_queue_audio(
+        self,
+        queue,
+        output_file,
+        include_bell=True
+    ):
+
+        if not PIPER_PYTHON.exists():
+
+            raise FileNotFoundError(
+                f"Piper Python not found:\n"
+                f"{PIPER_PYTHON}"
+            )
+
+        if not PIPER_MODEL.exists():
+
+            raise FileNotFoundError(
+                f"Lessac model not found:\n"
+                f"{PIPER_MODEL}"
+            )
+
+        if include_bell and not BELL_FILE.exists():
+
+            raise FileNotFoundError(
+                f"Bell sound not found:\n"
+                f"{BELL_FILE}"
+            )
+
+        parts = []
+
+        if include_bell:
+
+            bell = AudioSegment.from_wav(
+                BELL_FILE
+            )
+
+            parts.append(
+                bell
+            )
+
+            parts.append(
+                AudioSegment.silent(
+                    duration=int(
+                        BELL_DELAY * 1000
+                    )
+                )
+            )
+
+        with tempfile.TemporaryDirectory() as temp:
+
+            temp = Path(temp)
+
+            for index, character in enumerate(
+                queue.upper()
+            ):
+
+                pronunciation = PRONUNCIATION.get(
+                    character,
+                    character
+                )
+
+                character_file = (
+                    temp /
+                    f"character_{index}.wav"
+                )
+
+                self.generate_speech(
+                    pronunciation,
+                    character_file
+                )
+
+                character_audio = (
+                    AudioSegment.from_wav(
+                        character_file
+                    )
+                )
+
+                parts.append(
+                    character_audio
+                )
+
+                if index < len(queue) - 1:
+
+                    parts.append(
+                        AudioSegment.silent(
+                            duration=int(
+                                CHARACTER_DELAY * 1000
+                            )
+                        )
+                    )
+
+            # Pause before final phrase
+            parts.append(
+                AudioSegment.silent(
+                    duration=int(
+                        PHRASE_DELAY * 1000
+                    )
+                )
+            )
+
+            phrase_file = (
+                temp /
+                "final_phrase.wav"
+            )
+
+            self.generate_speech(
+                FINAL_PHRASE,
+                phrase_file
+            )
+
+            phrase_audio = (
+                AudioSegment.from_wav(
+                    phrase_file
+                )
+            )
+
+            parts.append(
+                phrase_audio
+            )
+
+        if not parts:
+
+            return
+
+        announcement = parts[0]
+
+        for part in parts[1:]:
+
+            announcement += part
+
+        announcement.export(
+            output_file,
+            format="wav"
+        )
+
+
+    def play_audio(
+        self,
+        audio_file
+    ):
+
+        if sys.platform == "win32":
+
+            import winsound
+
+            winsound.PlaySound(
+                str(audio_file),
+                winsound.SND_FILENAME
+            )
+
+        else:
+
+            subprocess.run(
+                [
+                    "ffplay",
+                    "-nodisp",
+                    "-autoexit",
+                    str(audio_file)
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+
+
+    def announce_queue(
+        self,
+        queue,
+        include_bell=True
+    ):
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".wav",
+            delete=False
+        ) as temp_file:
+
+            output_file = Path(
+                temp_file.name
+            )
+
+        try:
+
+            self.build_queue_audio(
+                queue,
+                output_file,
+                include_bell
+            )
+
+            self.play_audio(
+                output_file
+            )
+
+        except Exception as error:
+
+            print(
+                "Voice error:",
+                error
+            )
+
+        finally:
+
+            try:
+                output_file.unlink(
+                    missing_ok=True
+                )
+
+            except Exception:
+                pass
+
+
     # =========================================================
     # CALL QUEUE
     # =========================================================
@@ -700,6 +1199,7 @@ class SmartQueueAnnouncer(QMainWindow):
         self.check_new_day()
 
         if not self.current_queue:
+
             return
 
         self.last_called_queue = (
@@ -711,7 +1211,11 @@ class SmartQueueAnnouncer(QMainWindow):
             "First Call"
         )
 
-        # Piper voice will be connected later.
+        self.announce_queue(
+            self.current_queue,
+            include_bell=True
+        )
+
 
     # =========================================================
     # CALL AGAIN
@@ -722,6 +1226,7 @@ class SmartQueueAnnouncer(QMainWindow):
         self.check_new_day()
 
         if not self.last_called_queue:
+
             return
 
         self.add_history(
@@ -729,7 +1234,56 @@ class SmartQueueAnnouncer(QMainWindow):
             "Call Again"
         )
 
-        # Piper voice will be connected later.
+        self.announce_queue(
+            self.last_called_queue,
+            include_bell=False
+        )
+
+
+    # =========================================================
+    # TEST VOICE
+    # =========================================================
+
+    def test_voice(self):
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".wav",
+            delete=False
+        ) as temp_file:
+
+            output_file = Path(
+                temp_file.name
+            )
+
+        try:
+
+            self.build_queue_audio(
+                "AMNVZ001",
+                output_file,
+                include_bell=True
+            )
+
+            self.play_audio(
+                output_file
+            )
+
+        except Exception as error:
+
+            print(
+                "Voice test error:",
+                error
+            )
+
+        finally:
+
+            try:
+                output_file.unlink(
+                    missing_ok=True
+                )
+
+            except Exception:
+                pass
+
 
     # =========================================================
     # DAILY HISTORY
@@ -746,6 +1300,7 @@ class SmartQueueAnnouncer(QMainWindow):
             self.history_date = today
 
             self.update_history_display()
+
 
     def add_history(
         self,
@@ -768,10 +1323,10 @@ class SmartQueueAnnouncer(QMainWindow):
             )
         )
 
-        # Keep latest 10 only
         self.history = self.history[:10]
 
         self.update_history_display()
+
 
     def update_history_display(
         self
@@ -785,17 +1340,18 @@ class SmartQueueAnnouncer(QMainWindow):
             f"TODAY'S CALLS — {today_text}"
         )
 
-        # Remove previous history widgets
         while self.history_layout.count():
 
-            item = self.history_layout.takeAt(0)
+            item = (
+                self.history_layout.takeAt(0)
+            )
 
             widget = item.widget()
 
             if widget:
+
                 widget.deleteLater()
 
-        # No calls
         if not self.history:
 
             empty = QLabel(
@@ -818,7 +1374,6 @@ class SmartQueueAnnouncer(QMainWindow):
 
             return
 
-        # Display latest 10
         for queue, time, call_type in self.history:
 
             card = QFrame()
@@ -838,7 +1393,6 @@ class SmartQueueAnnouncer(QMainWindow):
                 8
             )
 
-            # Queue number
             queue_label = QLabel(
                 queue
             )
@@ -847,7 +1401,6 @@ class SmartQueueAnnouncer(QMainWindow):
                 "history_queue"
             )
 
-            # Time + call type
             details = QLabel(
                 f"{time}\n{call_type}"
             )
@@ -856,7 +1409,6 @@ class SmartQueueAnnouncer(QMainWindow):
                 "history_details"
             )
 
-            # Recall
             recall_button = QPushButton(
                 "↻\nRECALL"
             )
@@ -895,6 +1447,7 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.history_layout.addStretch()
 
+
     # =========================================================
     # HISTORY RECALL
     # =========================================================
@@ -913,7 +1466,11 @@ class SmartQueueAnnouncer(QMainWindow):
             "Call Again"
         )
 
-        # Piper voice will be connected later.
+        self.announce_queue(
+            queue,
+            include_bell=False
+        )
+
 
     # =========================================================
     # CLEAR HISTORY
@@ -927,6 +1484,7 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.update_history_display()
 
+
     # =========================================================
     # SETTINGS
     # =========================================================
@@ -937,12 +1495,15 @@ class SmartQueueAnnouncer(QMainWindow):
     ):
 
         if value < -10:
+
             return "Slower"
 
         if value > 10:
+
             return "Faster"
 
         return "Normal"
+
 
     def toggle_always_on_top(
         self,
@@ -968,6 +1529,7 @@ class SmartQueueAnnouncer(QMainWindow):
 app = QApplication(
     sys.argv
 )
+
 
 app.setStyleSheet("""
 
@@ -1291,6 +1853,7 @@ QCheckBox {
 }
 
 """)
+
 
 window = SmartQueueAnnouncer()
 
