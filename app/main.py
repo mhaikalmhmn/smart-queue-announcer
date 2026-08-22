@@ -6,7 +6,7 @@ from datetime import datetime, date
 
 from pydub import AudioSegment
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -94,6 +94,33 @@ PRONUNCIATION = {
 
 
 # =============================================================
+# VOICE WORKER
+# =============================================================
+
+class VoiceWorker(QThread):
+
+    finished = Signal()
+    error = Signal(str)
+
+    def __init__(self, owner, queue, include_bell=True):
+        super().__init__()
+        self.owner = owner
+        self.queue = queue
+        self.include_bell = include_bell
+
+    def run(self):
+        try:
+            self.owner.announce_queue(
+                self.queue,
+                self.include_bell
+            )
+        except Exception as error:
+            self.error.emit(str(error))
+        finally:
+            self.finished.emit()
+
+
+# =============================================================
 # MAIN WINDOW
 # =============================================================
 
@@ -105,6 +132,7 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.current_queue = ""
         self.last_called_queue = ""
+        self.voice_worker = None
 
         # Today's history only
         self.history = []
@@ -1145,6 +1173,43 @@ class SmartQueueAnnouncer(QMainWindow):
             )
 
 
+    def start_voice_worker(
+        self,
+        queue,
+        include_bell=True
+    ):
+
+        if self.voice_worker is not None and self.voice_worker.isRunning():
+            return
+
+        self.voice_worker = VoiceWorker(
+            self,
+            queue,
+            include_bell
+        )
+
+        self.voice_worker.error.connect(
+            lambda message: print(
+                "Voice error:",
+                message
+            )
+        )
+
+        self.voice_worker.finished.connect(
+            self._voice_worker_finished
+        )
+
+        self.voice_worker.finished.connect(
+            self.voice_worker.deleteLater
+        )
+
+        self.voice_worker.start()
+
+
+    def _voice_worker_finished(self):
+        self.voice_worker = None
+
+
     def announce_queue(
         self,
         queue,
@@ -1211,7 +1276,7 @@ class SmartQueueAnnouncer(QMainWindow):
             "First Call"
         )
 
-        self.announce_queue(
+        self.start_voice_worker(
             self.current_queue,
             include_bell=True
         )
@@ -1234,7 +1299,7 @@ class SmartQueueAnnouncer(QMainWindow):
             "Call Again"
         )
 
-        self.announce_queue(
+        self.start_voice_worker(
             self.last_called_queue,
             include_bell=False
         )
@@ -1246,43 +1311,10 @@ class SmartQueueAnnouncer(QMainWindow):
 
     def test_voice(self):
 
-        with tempfile.NamedTemporaryFile(
-            suffix=".wav",
-            delete=False
-        ) as temp_file:
-
-            output_file = Path(
-                temp_file.name
-            )
-
-        try:
-
-            self.build_queue_audio(
-                "AMNVZ001",
-                output_file,
-                include_bell=True
-            )
-
-            self.play_audio(
-                output_file
-            )
-
-        except Exception as error:
-
-            print(
-                "Voice test error:",
-                error
-            )
-
-        finally:
-
-            try:
-                output_file.unlink(
-                    missing_ok=True
-                )
-
-            except Exception:
-                pass
+        self.start_voice_worker(
+            "AMNVZ001",
+            include_bell=True
+        )
 
 
     # =========================================================
@@ -1466,7 +1498,7 @@ class SmartQueueAnnouncer(QMainWindow):
             "Call Again"
         )
 
-        self.announce_queue(
+        self.start_voice_worker(
             queue,
             include_bell=False
         )
