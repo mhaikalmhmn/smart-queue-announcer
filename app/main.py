@@ -6,12 +6,12 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
-    QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QSlider,
     QTabWidget,
     QVBoxLayout,
@@ -28,9 +28,12 @@ class SmartQueueAnnouncer(QMainWindow):
         self.last_called_queue = ""
         self.history = []
 
+        self.normal_size = (500, 700)
+        self.compact_size = (450, 620)
+
         self.setWindowTitle("Smart Queue Announcer")
-        self.setMinimumSize(430, 620)
-        self.resize(500, 700)
+        self.setMinimumSize(430, 600)
+        self.resize(*self.normal_size)
 
         self.build_interface()
 
@@ -53,12 +56,11 @@ class SmartQueueAnnouncer(QMainWindow):
         title = QLabel("🔊  Smart Queue Announcer")
         title.setObjectName("app_title")
 
-        header.addWidget(title)
-        header.addStretch()
-
         status = QLabel("● READY")
         status.setObjectName("status")
 
+        header.addWidget(title)
+        header.addStretch()
         header.addWidget(status)
 
         main_layout.addLayout(header)
@@ -66,20 +68,39 @@ class SmartQueueAnnouncer(QMainWindow):
         # Tabs
         self.tabs = QTabWidget()
 
-        self.tabs.addTab(self.create_announcer_tab(), "🔊 Announcer")
-        self.tabs.addTab(self.create_history_tab(), "◷ History")
-        self.tabs.addTab(self.create_settings_tab(), "⚙ Settings")
-        self.tabs.addTab(self.create_about_tab(), "ⓘ About")
+        self.tabs.addTab(
+            self.create_announcer_tab(),
+            "🔊 Announcer"
+        )
+
+        self.tabs.addTab(
+            self.create_history_tab(),
+            "◷ History"
+        )
+
+        self.tabs.addTab(
+            self.create_settings_tab(),
+            "⚙ Settings"
+        )
+
+        self.tabs.addTab(
+            self.create_about_tab(),
+            "ⓘ About"
+        )
 
         main_layout.addWidget(self.tabs)
 
         # Footer
         footer = QHBoxLayout()
 
-        voice_status = QLabel("● Voice: Lessac High")
+        voice_status = QLabel(
+            "● Voice: Lessac High"
+        )
         voice_status.setObjectName("footer")
 
-        offline_status = QLabel("Offline")
+        offline_status = QLabel(
+            "Offline"
+        )
         offline_status.setObjectName("offline")
 
         footer.addWidget(voice_status)
@@ -95,10 +116,10 @@ class SmartQueueAnnouncer(QMainWindow):
     def create_announcer_tab(self):
 
         page = QWidget()
-        layout = QVBoxLayout(page)
 
+        layout = QVBoxLayout(page)
         layout.setContentsMargins(8, 10, 8, 8)
-        layout.setSpacing(9)
+        layout.setSpacing(8)
 
         # Current queue
         current_title = QLabel("CURRENT QUEUE")
@@ -109,7 +130,7 @@ class SmartQueueAnnouncer(QMainWindow):
         self.queue_display = QLabel("—")
         self.queue_display.setObjectName("queue_display")
         self.queue_display.setAlignment(Qt.AlignCenter)
-        self.queue_display.setMinimumHeight(75)
+        self.queue_display.setMinimumHeight(72)
 
         layout.addWidget(self.queue_display)
 
@@ -117,12 +138,18 @@ class SmartQueueAnnouncer(QMainWindow):
         self.preview = QLabel(
             "Please enter a queue number."
         )
+
         self.preview.setObjectName("preview")
         self.preview.setWordWrap(True)
+        self.preview.setAlignment(Qt.AlignCenter)
+        self.preview.setMinimumHeight(42)
 
         layout.addWidget(self.preview)
 
-        # Keypad
+        # =====================================================
+        # KEYPAD
+        # =====================================================
+
         keypad = QGridLayout()
         keypad.setSpacing(5)
 
@@ -141,41 +168,90 @@ class SmartQueueAnnouncer(QMainWindow):
             column = index % 6
 
             button = QPushButton(key)
+
             button.setObjectName("key_button")
-            button.setMinimumHeight(38)
+
+            # Large touch target
+            button.setMinimumHeight(42)
 
             button.clicked.connect(
                 lambda checked=False, value=key:
                 self.add_character(value)
             )
 
-            keypad.addWidget(button, row, column)
+            keypad.addWidget(
+                button,
+                row,
+                column
+            )
 
         layout.addLayout(keypad)
 
-        # Main CALL button
-        call_button = QPushButton("🔊  CALL QUEUE")
-        call_button.setObjectName("call_button")
+        # =====================================================
+        # CALL BUTTON
+        # =====================================================
+
+        call_button = QPushButton(
+            "🔊  CALL QUEUE"
+        )
+
+        call_button.setObjectName(
+            "call_button"
+        )
+
+        # Same height as secondary buttons
         call_button.setMinimumHeight(52)
 
-        call_button.clicked.connect(self.call_queue)
+        call_button.clicked.connect(
+            self.call_queue
+        )
 
         layout.addWidget(call_button)
 
-        # Secondary buttons
+        # =====================================================
+        # SECONDARY BUTTONS
+        # =====================================================
+
         actions = QHBoxLayout()
         actions.setSpacing(6)
 
-        recall_button = QPushButton("↻  CALL AGAIN")
-        recall_button.setObjectName("recall_button")
-        recall_button.clicked.connect(self.recall_queue)
+        recall_button = QPushButton(
+            "↻  CALL AGAIN"
+        )
 
-        clear_button = QPushButton("🗑  CLEAR QUEUE")
-        clear_button.setObjectName("clear_button")
-        clear_button.clicked.connect(self.clear_queue)
+        recall_button.setObjectName(
+            "recall_button"
+        )
 
-        actions.addWidget(recall_button)
-        actions.addWidget(clear_button)
+        # Same height as CALL
+        recall_button.setMinimumHeight(52)
+
+        recall_button.clicked.connect(
+            self.recall_queue
+        )
+
+        clear_button = QPushButton(
+            "🗑  CLEAR QUEUE"
+        )
+
+        clear_button.setObjectName(
+            "clear_button"
+        )
+
+        # Same height as CALL
+        clear_button.setMinimumHeight(52)
+
+        clear_button.clicked.connect(
+            self.clear_queue
+        )
+
+        actions.addWidget(
+            recall_button
+        )
+
+        actions.addWidget(
+            clear_button
+        )
 
         layout.addLayout(actions)
 
@@ -188,32 +264,87 @@ class SmartQueueAnnouncer(QMainWindow):
     def create_history_tab(self):
 
         page = QWidget()
-        layout = QVBoxLayout(page)
 
-        layout.setContentsMargins(8, 10, 8, 8)
+        main_layout = QVBoxLayout(page)
 
-        title_row = QHBoxLayout()
+        main_layout.setContentsMargins(
+            8,
+            10,
+            8,
+            8
+        )
 
-        title = QLabel("CALL HISTORY")
-        title.setObjectName("section_title")
+        # Header
+        header = QHBoxLayout()
 
-        title_row.addWidget(title)
-        title_row.addStretch()
+        title = QLabel(
+            "LATEST 10 CALLS"
+        )
 
-        clear_history = QPushButton("Clear History")
-        clear_history.clicked.connect(self.clear_history)
+        title.setObjectName(
+            "section_title"
+        )
 
-        title_row.addWidget(clear_history)
+        header.addWidget(title)
+        header.addStretch()
 
-        layout.addLayout(title_row)
+        clear_history = QPushButton(
+            "Clear History"
+        )
 
-        self.history_display = QLabel("No calls yet.")
-        self.history_display.setObjectName("history")
-        self.history_display.setAlignment(Qt.AlignTop)
+        clear_history.setMinimumHeight(44)
 
-        layout.addWidget(self.history_display)
+        clear_history.clicked.connect(
+            self.clear_history
+        )
 
-        layout.addStretch()
+        header.addWidget(
+            clear_history
+        )
+
+        main_layout.addLayout(
+            header
+        )
+
+        # Scroll area
+        scroll = QScrollArea()
+
+        scroll.setWidgetResizable(
+            True
+        )
+
+        scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff
+        )
+
+        container = QWidget()
+
+        self.history_layout = QVBoxLayout(
+            container
+        )
+
+        self.history_layout.setContentsMargins(
+            4,
+            8,
+            4,
+            8
+        )
+
+        self.history_layout.setSpacing(
+            6
+        )
+
+        self.history_layout.addStretch()
+
+        scroll.setWidget(
+            container
+        )
+
+        main_layout.addWidget(
+            scroll
+        )
+
+        self.history_scroll = scroll
 
         return page
 
@@ -224,82 +355,294 @@ class SmartQueueAnnouncer(QMainWindow):
     def create_settings_tab(self):
 
         page = QWidget()
+
         layout = QVBoxLayout(page)
 
-        layout.setContentsMargins(8, 10, 8, 8)
-        layout.setSpacing(15)
+        layout.setContentsMargins(
+            8,
+            10,
+            8,
+            8
+        )
 
-        # Voice
-        voice_title = QLabel("VOICE SETTINGS")
-        voice_title.setObjectName("section_title")
+        layout.setSpacing(13)
 
-        layout.addWidget(voice_title)
+        # =====================================================
+        # VOICE
+        # =====================================================
+
+        voice_title = QLabel(
+            "VOICE SETTINGS"
+        )
+
+        voice_title.setObjectName(
+            "section_title"
+        )
+
+        layout.addWidget(
+            voice_title
+        )
 
         voice = QComboBox()
-        voice.addItem("Lessac High (en_US)")
-        voice.addItem("Other local voices — coming soon")
 
-        layout.addWidget(voice)
+        voice.addItem(
+            "Lessac High (en_US)"
+        )
 
-        # Speed
-        speed_label = QLabel("Voice Speed")
-        layout.addWidget(speed_label)
+        voice.addItem(
+            "Other local voices — coming soon"
+        )
 
-        speed = QSlider(Qt.Horizontal)
-        speed.setMinimum(-50)
-        speed.setMaximum(50)
-        speed.setValue(0)
+        voice.setMinimumHeight(
+            46
+        )
 
-        layout.addWidget(speed)
+        layout.addWidget(
+            voice
+        )
 
-        # Volume
-        volume_label = QLabel("Volume")
-        layout.addWidget(volume_label)
+        # =====================================================
+        # SPEED
+        # =====================================================
 
-        volume = QSlider(Qt.Horizontal)
-        volume.setMinimum(0)
-        volume.setMaximum(100)
-        volume.setValue(80)
+        speed_label = QLabel(
+            "Voice Speed"
+        )
 
-        layout.addWidget(volume)
+        layout.addWidget(
+            speed_label
+        )
+
+        speed_value = QLabel(
+            "Normal"
+        )
+
+        speed_value.setObjectName(
+            "slider_value"
+        )
+
+        speed_row = QHBoxLayout()
+
+        speed_row.addWidget(
+            speed_label
+        )
+
+        speed_row.addStretch()
+
+        speed_row.addWidget(
+            speed_value
+        )
+
+        # Replace the previous label position
+        layout.takeAt(
+            layout.count() - 1
+        )
+
+        layout.addLayout(
+            speed_row
+        )
+
+        speed = QSlider(
+            Qt.Horizontal
+        )
+
+        speed.setMinimum(
+            -50
+        )
+
+        speed.setMaximum(
+            50
+        )
+
+        speed.setValue(
+            0
+        )
+
+        # Large touch area
+        speed.setMinimumHeight(
+            42
+        )
+
+        speed.valueChanged.connect(
+            lambda value:
+            speed_value.setText(
+                self.speed_text(value)
+            )
+        )
+
+        layout.addWidget(
+            speed
+        )
+
+        # =====================================================
+        # VOLUME
+        # =====================================================
+
+        volume_row = QHBoxLayout()
+
+        volume_label = QLabel(
+            "Volume"
+        )
+
+        volume_value = QLabel(
+            "80%"
+        )
+
+        volume_value.setObjectName(
+            "slider_value"
+        )
+
+        volume_row.addWidget(
+            volume_label
+        )
+
+        volume_row.addStretch()
+
+        volume_row.addWidget(
+            volume_value
+        )
+
+        layout.addLayout(
+            volume_row
+        )
+
+        volume = QSlider(
+            Qt.Horizontal
+        )
+
+        volume.setMinimum(
+            0
+        )
+
+        volume.setMaximum(
+            100
+        )
+
+        volume.setValue(
+            80
+        )
+
+        # Large touch area
+        volume.setMinimumHeight(
+            42
+        )
+
+        volume.valueChanged.connect(
+            lambda value:
+            volume_value.setText(
+                f"{value}%"
+            )
+        )
+
+        layout.addWidget(
+            volume
+        )
 
         # Test voice
-        test_voice = QPushButton("▶  Test Voice")
-        test_voice.setObjectName("secondary_button")
+        test_voice = QPushButton(
+            "▶  TEST VOICE"
+        )
 
-        layout.addWidget(test_voice)
+        test_voice.setObjectName(
+            "secondary_button"
+        )
 
-        # Announcement
-        announcement_title = QLabel("ANNOUNCEMENT")
-        announcement_title.setObjectName("section_title")
+        test_voice.setMinimumHeight(
+            48
+        )
 
-        layout.addWidget(announcement_title)
+        # Voice will be connected later
+        layout.addWidget(
+            test_voice
+        )
+
+        # =====================================================
+        # ANNOUNCEMENT
+        # =====================================================
+
+        announcement_title = QLabel(
+            "ANNOUNCEMENT"
+        )
+
+        announcement_title.setObjectName(
+            "section_title"
+        )
+
+        layout.addWidget(
+            announcement_title
+        )
 
         announcement = QLabel(
             "{queue}, please pick up your order."
         )
-        announcement.setObjectName("announcement_box")
-        announcement.setWordWrap(True)
 
-        layout.addWidget(announcement)
+        announcement.setObjectName(
+            "announcement_box"
+        )
 
-        # Display settings
-        display_title = QLabel("DISPLAY")
-        display_title.setObjectName("section_title")
+        announcement.setWordWrap(
+            True
+        )
 
-        layout.addWidget(display_title)
+        layout.addWidget(
+            announcement
+        )
 
-        always_top = QCheckBox("Always keep window on top")
-        always_top.setChecked(True)
-        always_top.stateChanged.connect(self.toggle_always_on_top)
+        # =====================================================
+        # DISPLAY
+        # =====================================================
 
-        layout.addWidget(always_top)
+        display_title = QLabel(
+            "DISPLAY"
+        )
 
-        compact = QCheckBox("Compact Mode")
-        compact.setChecked(False)
-        compact.stateChanged.connect(self.toggle_compact_mode)
+        display_title.setObjectName(
+            "section_title"
+        )
 
-        layout.addWidget(compact)
+        layout.addWidget(
+            display_title
+        )
+
+        always_top = QCheckBox(
+            "Always keep window on top"
+        )
+
+        always_top.setChecked(
+            True
+        )
+
+        always_top.setMinimumHeight(
+            44
+        )
+
+        always_top.stateChanged.connect(
+            self.toggle_always_on_top
+        )
+
+        layout.addWidget(
+            always_top
+        )
+
+        compact = QCheckBox(
+            "Compact Mode"
+        )
+
+        compact.setChecked(
+            False
+        )
+
+        compact.setMinimumHeight(
+            44
+        )
+
+        compact.stateChanged.connect(
+            self.toggle_compact_mode
+        )
+
+        layout.addWidget(
+            compact
+        )
 
         layout.addStretch()
 
@@ -314,40 +657,86 @@ class SmartQueueAnnouncer(QMainWindow):
         page = QWidget()
 
         layout = QVBoxLayout(page)
-        layout.setAlignment(Qt.AlignCenter)
 
-        icon = QLabel("🔊")
-        icon.setObjectName("about_icon")
-        icon.setAlignment(Qt.AlignCenter)
+        layout.setAlignment(
+            Qt.AlignCenter
+        )
 
-        title = QLabel("Smart Queue Announcer")
-        title.setObjectName("about_title")
-        title.setAlignment(Qt.AlignCenter)
+        icon = QLabel(
+            "🔊"
+        )
 
-        version = QLabel("Version 1.0.0")
-        version.setAlignment(Qt.AlignCenter)
+        icon.setObjectName(
+            "about_icon"
+        )
+
+        icon.setAlignment(
+            Qt.AlignCenter
+        )
+
+        title = QLabel(
+            "Smart Queue Announcer"
+        )
+
+        title.setObjectName(
+            "about_title"
+        )
+
+        title.setAlignment(
+            Qt.AlignCenter
+        )
+
+        version = QLabel(
+            "Version 1.0.0"
+        )
+
+        version.setAlignment(
+            Qt.AlignCenter
+        )
 
         description = QLabel(
             "A simple Windows queue announcement system\n"
             "using a local natural voice engine."
         )
 
-        description.setAlignment(Qt.AlignCenter)
-        description.setWordWrap(True)
+        description.setAlignment(
+            Qt.AlignCenter
+        )
 
-        layout.addWidget(icon)
-        layout.addWidget(title)
-        layout.addWidget(version)
-        layout.addSpacing(20)
-        layout.addWidget(description)
+        description.setWordWrap(
+            True
+        )
+
+        layout.addWidget(
+            icon
+        )
+
+        layout.addWidget(
+            title
+        )
+
+        layout.addWidget(
+            version
+        )
+
+        layout.addSpacing(
+            20
+        )
+
+        layout.addWidget(
+            description
+        )
 
         return page
 
     # =========================================================
-    # QUEUE FUNCTIONS
+    # QUEUE INPUT
     # =========================================================
 
-    def add_character(self, character):
+    def add_character(
+        self,
+        character
+    ):
 
         self.current_queue += character
 
@@ -361,7 +750,9 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.current_queue = ""
 
-        self.queue_display.setText("—")
+        self.queue_display.setText(
+            "—"
+        )
 
         self.preview.setText(
             "Please enter a queue number."
@@ -383,7 +774,7 @@ class SmartQueueAnnouncer(QMainWindow):
             )
 
     # =========================================================
-    # CALL FUNCTIONS
+    # CALL
     # =========================================================
 
     def call_queue(self):
@@ -391,14 +782,20 @@ class SmartQueueAnnouncer(QMainWindow):
         if not self.current_queue:
             return
 
-        self.last_called_queue = self.current_queue
+        self.last_called_queue = (
+            self.current_queue
+        )
 
         self.add_history(
             self.current_queue,
             "First Call"
         )
 
-        # Voice will be added in the next stage.
+        # Piper voice will be connected later.
+
+    # =========================================================
+    # CALL AGAIN
+    # =========================================================
 
     def recall_queue(self):
 
@@ -410,13 +807,17 @@ class SmartQueueAnnouncer(QMainWindow):
             "Call Again"
         )
 
-        # Voice will be added in the next stage.
+        # Piper voice will be connected later.
 
     # =========================================================
     # HISTORY
     # =========================================================
 
-    def add_history(self, queue, call_type):
+    def add_history(
+        self,
+        queue,
+        call_type
+    ):
 
         timestamp = datetime.now().strftime(
             "%I:%M:%S %p"
@@ -424,32 +825,149 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.history.insert(
             0,
-            (queue, timestamp, call_type)
+            (
+                queue,
+                timestamp,
+                call_type
+            )
         )
+
+        # Keep latest 10 only
+        self.history = self.history[:10]
 
         self.update_history_display()
 
-    def update_history_display(self):
+    def update_history_display(
+        self
+    ):
+
+        # Remove existing widgets
+        while self.history_layout.count():
+
+            item = self.history_layout.takeAt(0)
+
+            widget = item.widget()
+
+            if widget:
+                widget.deleteLater()
 
         if not self.history:
 
-            self.history_display.setText(
+            empty = QLabel(
                 "No calls yet."
             )
 
-            return
-
-        lines = []
-
-        for queue, time, call_type in self.history[:30]:
-
-            lines.append(
-                f"{queue}    {time}    {call_type}"
+            empty.setObjectName(
+                "history_empty"
             )
 
-        self.history_display.setText(
-            "\n\n".join(lines)
+            empty.setAlignment(
+                Qt.AlignCenter
+            )
+
+            self.history_layout.addWidget(
+                empty
+            )
+
+            self.history_layout.addStretch()
+
+            return
+
+        for queue, time, call_type in self.history:
+
+            card = QFrame()
+
+            card.setObjectName(
+                "history_card"
+            )
+
+            card_layout = QHBoxLayout(
+                card
+            )
+
+            card_layout.setContentsMargins(
+                10,
+                8,
+                8,
+                8
+            )
+
+            # Queue
+            queue_label = QLabel(
+                queue
+            )
+
+            queue_label.setObjectName(
+                "history_queue"
+            )
+
+            # Details
+            details = QLabel(
+                f"{time}\n{call_type}"
+            )
+
+            details.setObjectName(
+                "history_details"
+            )
+
+            details.setWordWrap(
+                True
+            )
+
+            # Recall
+            recall_button = QPushButton(
+                "↻\nRECALL"
+            )
+
+            recall_button.setObjectName(
+                "history_recall"
+            )
+
+            recall_button.setMinimumSize(
+                72,
+                54
+            )
+
+            recall_button.clicked.connect(
+                lambda checked=False,
+                q=queue:
+                self.recall_history(q)
+            )
+
+            card_layout.addWidget(
+                queue_label
+            )
+
+            card_layout.addWidget(
+                details,
+                1
+            )
+
+            card_layout.addWidget(
+                recall_button
+            )
+
+            self.history_layout.addWidget(
+                card
+            )
+
+        self.history_layout.addStretch()
+
+    def recall_history(
+        self,
+        queue
+    ):
+
+        # Set as last called
+        self.last_called_queue = queue
+
+        # Immediately record the recall
+        self.add_history(
+            queue,
+            "Call Again"
         )
+
+        # Piper voice will be connected later.
 
     def clear_history(self):
 
@@ -458,12 +976,34 @@ class SmartQueueAnnouncer(QMainWindow):
         self.update_history_display()
 
     # =========================================================
-    # DISPLAY SETTINGS
+    # SETTINGS
     # =========================================================
 
-    def toggle_always_on_top(self, state):
+    def speed_text(
+        self,
+        value
+    ):
 
-        enabled = state == Qt.Checked
+        if value < -10:
+            return "Slower"
+
+        if value > 10:
+            return "Faster"
+
+        return "Normal"
+
+    # =========================================================
+    # ALWAYS ON TOP
+    # =========================================================
+
+    def toggle_always_on_top(
+        self,
+        state
+    ):
+
+        enabled = (
+            state == Qt.Checked
+        )
 
         self.setWindowFlag(
             Qt.WindowStaysOnTopHint,
@@ -472,24 +1012,43 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.show()
 
-    def toggle_compact_mode(self, state):
+    # =========================================================
+    # COMPACT MODE
+    # =========================================================
 
-        enabled = state == Qt.Checked
+    def toggle_compact_mode(
+        self,
+        state
+    ):
+
+        enabled = (
+            state == Qt.Checked
+        )
 
         if enabled:
 
-            self.resize(430, 620)
+            self.resize(
+                self.compact_size[0],
+                self.compact_size[1]
+            )
 
         else:
 
-            self.resize(500, 700)
+            self.resize(
+                self.normal_size[0],
+                self.normal_size[1]
+            )
+
+        self.updateGeometry()
+
+    # =========================================================
+    # APPLICATION
+    # =========================================================
 
 
-# =============================================================
-# APPLICATION
-# =============================================================
-
-app = QApplication(sys.argv)
+app = QApplication(
+    sys.argv
+)
 
 app.setStyleSheet("""
 
@@ -503,6 +1062,10 @@ QWidget {
     font-size: 12px;
 }
 
+/* =========================================================
+   TABS
+   ========================================================= */
+
 QTabWidget::pane {
     border: 1px solid #1d3b5c;
     border-radius: 12px;
@@ -512,15 +1075,20 @@ QTabWidget::pane {
 QTabBar::tab {
     background-color: #0d1c2d;
     color: #8ea4bb;
-    padding: 9px 10px;
+    padding: 11px 10px;
     margin-right: 3px;
     border-radius: 7px;
+    min-height: 34px;
 }
 
 QTabBar::tab:selected {
     background-color: #086fe8;
     color: white;
 }
+
+/* =========================================================
+   HEADER
+   ========================================================= */
 
 #app_title {
     font-size: 18px;
@@ -533,11 +1101,19 @@ QTabBar::tab:selected {
     font-weight: 700;
 }
 
+/* =========================================================
+   SECTION TITLES
+   ========================================================= */
+
 #section_title {
     color: #42a5ff;
     font-size: 12px;
     font-weight: 700;
 }
+
+/* =========================================================
+   QUEUE DISPLAY
+   ========================================================= */
 
 #queue_display {
     background-color: #081522;
@@ -548,6 +1124,10 @@ QTabBar::tab:selected {
     font-weight: 700;
 }
 
+/* =========================================================
+   ANNOUNCEMENT PREVIEW
+   ========================================================= */
+
 #preview {
     background-color: #0e2237;
     border: 1px solid #193d5c;
@@ -557,19 +1137,32 @@ QTabBar::tab:selected {
     font-size: 12px;
 }
 
+/* =========================================================
+   KEYPAD
+   ========================================================= */
+
 #key_button {
     background-color: #0d1d2d;
     border: 1px solid #24435f;
-    border-radius: 6px;
+    border-radius: 7px;
     color: #eaf4ff;
     font-size: 15px;
     font-weight: 600;
+    min-height: 42px;
 }
 
 #key_button:hover {
     background-color: #12406c;
     border: 1px solid #2f9cff;
 }
+
+#key_button:pressed {
+    background-color: #086fe8;
+}
+
+/* =========================================================
+   MAIN CALL
+   ========================================================= */
 
 #call_button {
     background-color: #0878ed;
@@ -578,43 +1171,121 @@ QTabBar::tab:selected {
     color: white;
     font-size: 15px;
     font-weight: 700;
+    min-height: 52px;
 }
 
 #call_button:hover {
     background-color: #1989ff;
 }
 
+#call_button:pressed {
+    background-color: #075db7;
+}
+
+/* =========================================================
+   SECONDARY BUTTONS
+   ========================================================= */
+
 #recall_button {
     background-color: #11733b;
     border: none;
-    border-radius: 7px;
+    border-radius: 8px;
     color: white;
+    font-size: 13px;
     font-weight: 600;
+    min-height: 52px;
+}
+
+#recall_button:hover {
+    background-color: #168b48;
+}
+
+#recall_button:pressed {
+    background-color: #0c5c2f;
 }
 
 #clear_button {
     background-color: #a92323;
     border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 52px;
+}
+
+#clear_button:hover {
+    background-color: #c12c2c;
+}
+
+#clear_button:pressed {
+    background-color: #8d1d1d;
+}
+
+/* =========================================================
+   HISTORY
+   ========================================================= */
+
+#history_card {
+    background-color: #0d1d2d;
+    border: 1px solid #24435f;
+    border-radius: 9px;
+}
+
+#history_queue {
+    color: #3c9bff;
+    font-size: 18px;
+    font-weight: 700;
+    min-width: 65px;
+}
+
+#history_details {
+    color: #9db2c7;
+    font-size: 11px;
+}
+
+#history_recall {
+    background-color: #11733b;
+    border: none;
     border-radius: 7px;
     color: white;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+#history_recall:hover {
+    background-color: #168b48;
+}
+
+#history_empty {
+    color: #7e94aa;
+    padding: 30px;
+}
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+QComboBox {
+    background-color: #0d1d2d;
+    border: 1px solid #28465f;
+    border-radius: 7px;
+    padding: 8px;
+    min-height: 28px;
 }
 
 #secondary_button {
     background-color: #12314d;
     border: 1px solid #275477;
-    border-radius: 7px;
+    border-radius: 8px;
     padding: 8px;
     color: white;
+    font-weight: 600;
+    min-height: 48px;
 }
 
-#history {
-    background-color: #091724;
-    border: 1px solid #1b3852;
-    border-radius: 8px;
-    padding: 12px;
-    color: #d6e3ef;
-    font-size: 12px;
+#secondary_button:hover {
+    background-color: #174363;
 }
 
 #announcement_box {
@@ -623,7 +1294,50 @@ QTabBar::tab:selected {
     border-radius: 8px;
     padding: 12px;
     color: #bcd0e4;
+    min-height: 35px;
 }
+
+#slider_value {
+    color: #42a5ff;
+    font-weight: 700;
+}
+
+/* =========================================================
+   TOUCH SLIDERS
+   ========================================================= */
+
+QSlider::groove:horizontal {
+    height: 10px;
+    background: #29445d;
+    border-radius: 5px;
+}
+
+QSlider::sub-page:horizontal {
+    background: #1685f5;
+    border-radius: 5px;
+}
+
+QSlider::handle:horizontal {
+    width: 26px;
+    height: 26px;
+    margin: -8px 0;
+    background: #ffffff;
+    border: 3px solid #1685f5;
+    border-radius: 13px;
+}
+
+/* =========================================================
+   TOUCH CHECKBOXES
+   ========================================================= */
+
+QCheckBox {
+    spacing: 10px;
+    min-height: 44px;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
 
 #footer {
     color: #8ba1b6;
@@ -635,6 +1349,10 @@ QTabBar::tab:selected {
     font-size: 10px;
 }
 
+/* =========================================================
+   ABOUT
+   ========================================================= */
+
 #about_icon {
     font-size: 55px;
 }
@@ -645,33 +1363,12 @@ QTabBar::tab:selected {
     color: #3c9bff;
 }
 
-QComboBox {
-    background-color: #0d1d2d;
-    border: 1px solid #28465f;
-    border-radius: 6px;
-    padding: 8px;
-}
-
-QSlider::groove:horizontal {
-    height: 4px;
-    background: #29445d;
-    border-radius: 2px;
-}
-
-QSlider::handle:horizontal {
-    width: 14px;
-    margin: -5px 0;
-    background: #1685f5;
-    border-radius: 7px;
-}
-
-QCheckBox {
-    spacing: 8px;
-}
-
 """)
 
 window = SmartQueueAnnouncer()
+
 window.show()
 
-sys.exit(app.exec())
+sys.exit(
+    app.exec()
+)
