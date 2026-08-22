@@ -27,10 +27,17 @@ jobs:
 
       - name: Build EXE
         run: |
-          pyinstaller --name SmartQueueAnnouncer --windowed --onefile app/main.py
+          pyinstaller `
+            --name SmartQueueAnnouncer `
+            --windowed `
+            --noconfirm `
+            --clean `
+            --add-data "sounds;sounds" `
+            --add-data "voice_cache;voice_cache" `
+            app/main.py
 
-      - name: Upload EXE
+      - name: Upload Windows application
         uses: actions/upload-artifact@v4
         with:
           name: SmartQueueAnnouncer-Windows
-          path: dist/SmartQueueAnnouncer.exe
+          path: dist/SmartQueueAnnouncer/
