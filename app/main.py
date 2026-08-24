@@ -1,6 +1,7 @@
 import sys
 import subprocess
 import ctypes
+import json
 from ctypes import wintypes
 import tempfile
 from pathlib import Path
@@ -8,7 +9,7 @@ from datetime import datetime, date
 
 from pydub import AudioSegment
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -32,6 +33,9 @@ from PySide6.QtWidgets import (
 # =============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+SETTINGS_DIR = Path.home() / "AppData" / "Local" / "SmartQueueAnnouncer"
+SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 
 PIPER_PYTHON = Path(
     r"C:\Users\User\piper-test\Scripts\python.exe"
@@ -137,6 +141,8 @@ class SmartQueueAnnouncer(QMainWindow):
         self.last_called_queue = ""
         self.voice_worker = None
 
+        self.settings = self.load_settings()
+
         # Today's history only
         self.history = []
         self.history_date = date.today()
@@ -156,6 +162,72 @@ class SmartQueueAnnouncer(QMainWindow):
         )
 
         self.build_interface()
+
+    # =========================================================
+    # SETTINGS
+    # =========================================================
+
+    def load_settings(self):
+
+        if not SETTINGS_FILE.exists():
+            return {
+                "volume": 80,
+                "always_on_top": True
+            }
+
+        try:
+
+            with open(
+                SETTINGS_FILE,
+                "r",
+                encoding="utf-8"
+            ) as file:
+
+                return json.load(file)
+
+        except Exception:
+
+            return {
+                "volume": 80,
+                "always_on_top": True
+            }    
+
+    def save_settings(self):
+
+        SETTINGS_DIR.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        settings = {
+            "volume": self.volume.value(),
+            "always_on_top": self.always_on_top.isChecked()
+        }
+
+        try:
+
+            with open(
+                SETTINGS_FILE,
+                "w",
+                encoding="utf-8"
+            ) as file:
+
+                json.dump(
+                    settings,
+                    file,
+                    indent=4
+                )
+
+        except Exception as error:
+
+            print(
+                "Settings error:",
+                error
+            )     
+
+    def volume_changed(self, value):
+
+         self.save_settings()                 
 
 
     # =========================================================
@@ -650,7 +722,7 @@ class SmartQueueAnnouncer(QMainWindow):
         )
 
         volume_value = QLabel(
-            "80%"
+            f"{self.settings.get('volume', 80)}%"
         )
 
         volume_value.setObjectName(
@@ -684,7 +756,10 @@ class SmartQueueAnnouncer(QMainWindow):
         )
 
         self.volume.setValue(
-            80
+            self.settings.get(
+            "volume",
+             80
+            )
         )
 
         self.volume.setMinimumHeight(
@@ -692,9 +767,11 @@ class SmartQueueAnnouncer(QMainWindow):
         )
 
         self.volume.valueChanged.connect(
-            lambda value:
-            volume_value.setText(
-                f"{value}%"
+            lambda value: (
+                volume_value.setText(
+                    f"{value}%"
+                ),
+            self.volume_changed(value)
             )
         )
 
@@ -765,28 +842,38 @@ class SmartQueueAnnouncer(QMainWindow):
             display_title
         )
 
-        always_top = QCheckBox(
+        self.always_on_top = QCheckBox(
             "Always keep window on top"
         )
 
-        always_top.setChecked(
-            True
+        self.always_on_top.setChecked(
+            self.settings.get(
+                "always_on_top",
+                True
+            )
         )
 
-        always_top.setMinimumHeight(
+        QTimer.singleShot(
+            100,
+                lambda: self.toggle_always_on_top(
+                    self.always_on_top.isChecked()
+                )
+        )
+
+        self.always_on_top.setMinimumHeight(
             44
         )
 
-        always_top.stateChanged.connect(
+        self.always_on_top.stateChanged.connect(
             self.toggle_always_on_top
         )
 
-        self.toggle_always_on_top(
-            always_top.checkState()
+        self.always_on_top.stateChanged.connect(
+            lambda state: self.save_settings()
         )
 
         layout.addWidget(
-            always_top
+            self.always_on_top
         )
 
         layout.addStretch()
@@ -1519,13 +1606,6 @@ class SmartQueueAnnouncer(QMainWindow):
                 SWP_NOSIZE
                 | SWP_NOMOVE
                 | SWP_SHOWWINDOW
-            )
-
-            print(
-                "Always on Top:",
-                enabled,
-                "Result:",
-                result
             )
 
         else:
