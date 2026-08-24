@@ -1,5 +1,7 @@
 import sys
 import subprocess
+import ctypes
+from ctypes import wintypes
 import tempfile
 from pathlib import Path
 from datetime import datetime, date
@@ -839,6 +841,10 @@ class SmartQueueAnnouncer(QMainWindow):
             self.toggle_always_on_top
         )
 
+        self.toggle_always_on_top(
+            always_top.checkState()
+        )
+
         layout.addWidget(
             always_top
         )
@@ -1510,16 +1516,68 @@ class SmartQueueAnnouncer(QMainWindow):
         state
     ):
 
-        enabled = (
-            state == Qt.Checked
+        enabled = bool(
+        state
         )
 
-        self.setWindowFlag(
-            Qt.WindowStaysOnTopHint,
-            enabled
-        )
+        if sys.platform == "win32":
 
-        self.show()
+            user32 = ctypes.WinDLL(
+                "user32",
+                use_last_error=True
+            )
+
+            hwnd = int(self.winId())
+
+            HWND_TOPMOST = -1
+            HWND_NOTOPMOST = -2
+
+            SWP_NOSIZE = 0x0001
+            SWP_NOMOVE = 0x0002
+            SWP_SHOWWINDOW = 0x0040
+
+            user32.SetWindowPos.argtypes = [
+                wintypes.HWND,
+                wintypes.HWND,
+                wintypes.INT,
+                wintypes.INT,
+                wintypes.INT,
+                wintypes.INT,
+                wintypes.UINT,
+            ]
+
+            user32.SetWindowPos.restype = wintypes.BOOL
+
+            result = user32.SetWindowPos(
+                hwnd,
+                HWND_TOPMOST if enabled else HWND_NOTOPMOST,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOSIZE
+                | SWP_NOMOVE
+                | SWP_SHOWWINDOW
+            )
+
+            print(
+                "Always on Top:",
+                enabled,
+                "Result:",
+                result
+            )
+
+        else:
+
+            flags = self.windowFlags()
+
+            if enabled:
+                flags |= Qt.WindowStaysOnTopHint
+            else:
+                flags &= ~Qt.WindowStaysOnTopHint
+
+            self.setWindowFlags(flags)
+            self.show()
 
 
 # =============================================================
