@@ -194,11 +194,11 @@ class SmartQueueAnnouncer(QMainWindow):
             "app_title"
         )
 
-        status = QLabel(
+        self.status = QLabel(
             "● READY"
         )
 
-        status.setObjectName(
+        self.status.setObjectName(
             "status"
         )
 
@@ -209,7 +209,7 @@ class SmartQueueAnnouncer(QMainWindow):
         header.addStretch()
 
         header.addWidget(
-            status
+            self.status
         )
 
         main_layout.addLayout(
@@ -642,71 +642,11 @@ class SmartQueueAnnouncer(QMainWindow):
             voice
         )
 
-        # Voice speed
-        speed_row = QHBoxLayout()
-
-        speed_label = QLabel(
-            "Voice Speed"
-        )
-
-        speed_value = QLabel(
-            "Normal"
-        )
-
-        speed_value.setObjectName(
-            "slider_value"
-        )
-
-        speed_row.addWidget(
-            speed_label
-        )
-
-        speed_row.addStretch()
-
-        speed_row.addWidget(
-            speed_value
-        )
-
-        layout.addLayout(
-            speed_row
-        )
-
-        speed = QSlider(
-            Qt.Horizontal
-        )
-
-        speed.setMinimum(
-            -50
-        )
-
-        speed.setMaximum(
-            50
-        )
-
-        speed.setValue(
-            0
-        )
-
-        speed.setMinimumHeight(
-            42
-        )
-
-        speed.valueChanged.connect(
-            lambda value:
-            speed_value.setText(
-                self.speed_text(value)
-            )
-        )
-
-        layout.addWidget(
-            speed
-        )
-
         # Volume
         volume_row = QHBoxLayout()
 
         volume_label = QLabel(
-            "Volume"
+            "Announcement Volume"
         )
 
         volume_value = QLabel(
@@ -731,27 +671,27 @@ class SmartQueueAnnouncer(QMainWindow):
             volume_row
         )
 
-        volume = QSlider(
+        self.volume = QSlider(
             Qt.Horizontal
         )
 
-        volume.setMinimum(
+        self.volume.setMinimum(
             0
         )
 
-        volume.setMaximum(
+        self.volume.setMaximum(
             100
         )
 
-        volume.setValue(
+        self.volume.setValue(
             80
         )
 
-        volume.setMinimumHeight(
+        self.volume.setMinimumHeight(
             42
         )
 
-        volume.valueChanged.connect(
+        self.volume.valueChanged.connect(
             lambda value:
             volume_value.setText(
                 f"{value}%"
@@ -759,7 +699,7 @@ class SmartQueueAnnouncer(QMainWindow):
         )
 
         layout.addWidget(
-            volume
+            self.volume
         )
 
         # Test voice
@@ -1126,7 +1066,26 @@ class SmartQueueAnnouncer(QMainWindow):
 
         if sys.platform == "win32":
 
+            volume = self.volume.value()
+
             import winsound
+
+            audio = AudioSegment.from_wav(
+                audio_file
+            )
+
+            volume_change = (
+                20 * __import__("math").log10(
+                max(volume, 1) / 100
+                )
+            )
+
+            audio = audio + volume_change
+
+            audio.export(
+                audio_file,
+                format="wav"
+            )
 
             winsound.PlaySound(
                 str(audio_file),
@@ -1177,10 +1136,27 @@ class SmartQueueAnnouncer(QMainWindow):
             self.voice_worker.deleteLater
         )
 
+        self.status.setText(
+           "● CALLING..."
+        )
+
+        self.status.setStyleSheet(
+             "color: #f5c542;"
+        )
+
         self.voice_worker.start()
 
 
     def _voice_worker_finished(self):
+
+        self.status.setText(
+            "● READY"
+     )
+
+        self.status.setStyleSheet(
+            "color: #35d06f;"
+    )
+
         self.voice_worker = None
 
 
@@ -1494,21 +1470,6 @@ class SmartQueueAnnouncer(QMainWindow):
     # =========================================================
     # SETTINGS
     # =========================================================
-
-    def speed_text(
-        self,
-        value
-    ):
-
-        if value < -10:
-
-            return "Slower"
-
-        if value > 10:
-
-            return "Faster"
-
-        return "Normal"
 
 
     def toggle_always_on_top(
