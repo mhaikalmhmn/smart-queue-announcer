@@ -9,7 +9,10 @@ from datetime import datetime, date
 
 from pydub import AudioSegment
 
+from piper import PiperVoice
+
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -32,18 +35,18 @@ from PySide6.QtWidgets import (
 # VOICE SETTINGS
 # =============================================================
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+
+    BASE_DIR = Path(sys._MEIPASS)
+
+else:
+
+    BASE_DIR = Path(__file__).resolve().parent.parent
 
 SETTINGS_DIR = Path.home() / "AppData" / "Local" / "SmartQueueAnnouncer"
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 
-PIPER_PYTHON = Path(
-    r"C:\Users\User\piper-test\Scripts\python.exe"
-)
-
-PIPER_MODEL = Path(
-    r"C:\Users\User\OneDrive - Foodle Sdn Bhd\Backup\piper-voice\en_US-lessac-high.onnx"
-)
+PIPER_MODEL = BASE_DIR / "piper" / "voices" / "en_US-lessac-high.onnx"
 
 BELL_FILE = BASE_DIR / "sounds" / "bell.wav"
 VOICE_CACHE_DIR = BASE_DIR / "voice_cache"
@@ -140,6 +143,7 @@ class SmartQueueAnnouncer(QMainWindow):
         self.current_queue = ""
         self.last_called_queue = ""
         self.voice_worker = None
+        self.piper_voice = None
 
         self.settings = self.load_settings()
 
@@ -149,6 +153,14 @@ class SmartQueueAnnouncer(QMainWindow):
 
         self.setWindowTitle(
             "Smart Queue Announcer"
+        )
+
+        self.setWindowIcon(
+            QIcon(
+                str(
+                    BASE_DIR / "assets" / "smart_queue_announcer.ico"
+                )
+            )
         )
 
         self.setMinimumSize(
@@ -1021,6 +1033,22 @@ class SmartQueueAnnouncer(QMainWindow):
         text,
         output_file
     ):
+
+        if self.piper_voice is None:
+
+            self.piper_voice = PiperVoice.load(
+                str(PIPER_MODEL)
+            )
+
+        with open(
+            output_file,
+            "wb"
+        ) as wav_file:
+
+            self.piper_voice.synthesize_wav(
+                text,
+                wav_file
+            )
 
         command = [
             str(PIPER_PYTHON),
